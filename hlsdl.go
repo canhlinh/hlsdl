@@ -147,26 +147,24 @@ func (hlsDl *HlsDl) join(dir string, segments []*Segment) (string, error) {
 	return filepath, nil
 }
 
-func (hlsDl *HlsDl) Download() error {
+func (hlsDl *HlsDl) Download() (string, error) {
 	segs, err := parseHlsSegments(hlsDl.hlsURL)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	if err := os.MkdirAll(hlsDl.dir, os.ModePerm); err != nil {
-		return err
+		return "", err
 	}
 
 	if err := hlsDl.downloadMediaSegments(segs); err != nil {
-		return err
+		return "", err
 	}
 
 	filepath, err := hlsDl.join(hlsDl.dir, segs)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	fmt.Println(filepath)
-
-	return nil
+	return filepath, nil
 }
