@@ -39,7 +39,7 @@ func New(hlsURL string, dir string, workers int) *HlsDl {
 }
 
 func wait(wg *sync.WaitGroup) chan bool {
-	c := make(chan bool)
+	c := make(chan bool, 1)
 	go func() {
 		wg.Wait()
 		c <- true
