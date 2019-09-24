@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	hlsDL := hlsdl.New("https://bitdash-a.akamaihd.net/content/sintel/hls/video/10000kbit.m3u8", "download", 10)
+	hlsDL := hlsdl.New("http://167.179.94.30/m3u8.m3u8", "download", 2)
 	filepath, err := hlsDL.Download()
 	if err != nil {
 		panic(err)
