@@ -24,7 +24,7 @@ func parseHlsSegments(hlsURL string) ([]*Segment, error) {
 		return nil, errors.New(res.Status)
 	}
 
-	p, t, err := m3u8.DecodeFrom(res.Body, true)
+	p, t, err := m3u8.DecodeFrom(res.Body, false)
 	if err = p.DecodeFrom(res.Body, false); err != nil {
 		return nil, err
 	}
@@ -40,6 +40,7 @@ func parseHlsSegments(hlsURL string) ([]*Segment, error) {
 			continue
 		}
 
+		segment := &Segment{MediaSegment: seg}
 		if !strings.Contains(seg.URI, "http") {
 			segmentURL, err := baseURL.Parse(seg.URI)
 			if err != nil {
@@ -47,10 +48,9 @@ func parseHlsSegments(hlsURL string) ([]*Segment, error) {
 			}
 
 			seg.URI = segmentURL.String()
-
-			segment := &Segment{MediaSegment: seg}
-			segments = append(segments, segment)
 		}
+
+		segments = append(segments, segment)
 	}
 
 	return segments, nil

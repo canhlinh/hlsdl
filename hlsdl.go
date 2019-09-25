@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"sort"
@@ -48,7 +49,7 @@ func wait(wg *sync.WaitGroup) chan bool {
 }
 
 func (hlsDl *HlsDl) downloadSegment(segment *Segment) error {
-	fmt.Printf("Downloading segment %d \n", segment.SeqId)
+	log.Printf("Downloading segment %d \n", segment.SeqId)
 
 	res, err := hlsDl.client.Get(segment.URI)
 	if err != nil {
@@ -77,7 +78,8 @@ func (hlsDl *HlsDl) downloadMediaSegments(segments []*Segment) error {
 	wg := &sync.WaitGroup{}
 	wg.Add(hlsDl.workers)
 
-	waitChan := wait(wg)
+	doneChan := wait(wg)
+	quitChan := make(chan bool)
 	segmentChan := make(chan *Segment)
 	errHandlerChan := make(chan *DownloadError, hlsDl.workers)
 
@@ -88,31 +90,37 @@ func (hlsDl *HlsDl) downloadMediaSegments(segments []*Segment) error {
 			for segment := range segmentChan {
 				if err := hlsDl.downloadSegment(segment); err != nil {
 					errHandlerChan <- &DownloadError{err}
+					return
 				}
 			}
 		}()
 	}
 
 	go func() {
+		defer close(segmentChan)
+
 		for _, segment := range segments {
 			segment.Path = fmt.Sprintf("%s/seg%d.ts", hlsDl.dir, segment.SeqId)
-			segmentChan <- segment
+
+			select {
+			case segmentChan <- segment:
+			case <-quitChan:
+				return
+			}
 		}
 
-		fmt.Println("Closing segment chan")
-		close(segmentChan)
 	}()
 
 	for {
 		select {
-		case <-waitChan:
-			fmt.Println("Closing wait chan")
+		case <-doneChan:
 			return nil
 		case err := <-errHandlerChan:
-			close(segmentChan)
+			close(quitChan)
 			return err.Err
 		}
 	}
+
 }
 
 func (hlsDl *HlsDl) join(dir string, segments []*Segment) (string, error) {
