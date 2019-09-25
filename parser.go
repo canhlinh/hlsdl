@@ -40,7 +40,6 @@ func parseHlsSegments(hlsURL string) ([]*Segment, error) {
 			continue
 		}
 
-		segment := &Segment{MediaSegment: seg}
 		if !strings.Contains(seg.URI, "http") {
 			segmentURL, err := baseURL.Parse(seg.URI)
 			if err != nil {
@@ -50,6 +49,7 @@ func parseHlsSegments(hlsURL string) ([]*Segment, error) {
 			seg.URI = segmentURL.String()
 		}
 
+		segment := &Segment{MediaSegment: seg}
 		segments = append(segments, segment)
 	}
 
