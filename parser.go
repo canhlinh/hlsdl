@@ -49,6 +49,10 @@ func parseHlsSegments(hlsURL string) ([]*Segment, error) {
 			seg.URI = segmentURL.String()
 		}
 
+		if seg.Key == nil && mediaList.Key != nil {
+			seg.Key = mediaList.Key
+		}
+
 		segment := &Segment{MediaSegment: seg}
 		segments = append(segments, segment)
 	}

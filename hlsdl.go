@@ -69,7 +69,7 @@ func (hlsDl *HlsDl) downloadSegment(segment *Segment) error {
 		return err
 	}
 
-	fmt.Printf("Downloaded segment %d \n", segment.SeqId)
+	log.Printf("Downloaded segment %d \n", segment.SeqId)
 	return nil
 }
 
@@ -137,7 +137,7 @@ func (hlsDl *HlsDl) join(dir string, segments []*Segment) (string, error) {
 
 	for _, segment := range segments {
 
-		d, err := Decrypt(segment)
+		d, err := hlsDl.Decrypt(segment)
 		if err != nil {
 			return "", err
 		}
