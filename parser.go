@@ -24,11 +24,10 @@ func parseHlsSegments(hlsURL string) ([]*Segment, error) {
 		return nil, errors.New(res.Status)
 	}
 
-	p, t, err := m3u8.DecodeFrom(res.Body, false)
-	if err = p.DecodeFrom(res.Body, false); err != nil {
+	p, t, err := m3u8.DecodeFrom(res.Body, true)
+	if err != nil {
 		return nil, err
 	}
-
 	if t != m3u8.MEDIA {
 		return nil, errors.New("No support the m3u8 format")
 	}
@@ -51,6 +50,15 @@ func parseHlsSegments(hlsURL string) ([]*Segment, error) {
 
 		if seg.Key == nil && mediaList.Key != nil {
 			seg.Key = mediaList.Key
+		}
+
+		if seg.Key != nil && !strings.Contains(seg.Key.URI, "http") {
+			keyURL, err := baseURL.Parse(seg.Key.URI)
+			if err != nil {
+				return nil, err
+			}
+
+			seg.Key.URI = keyURL.String()
 		}
 
 		segment := &Segment{MediaSegment: seg}

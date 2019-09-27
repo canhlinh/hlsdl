@@ -1,13 +1,13 @@
 package hlsdl
 
 import (
+	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
-	"encoding/hex"
 	"errors"
 	"io/ioutil"
+	"log"
 	"os"
-	"strings"
 )
 
 func (hlsDl *HlsDl) Decrypt(segment *Segment) ([]byte, error) {
@@ -27,28 +27,49 @@ func (hlsDl *HlsDl) Decrypt(segment *Segment) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		return decrypt(data, key, iv)
+
+		log.Println("Descrypting", len(key), len(iv))
+		data, err = AES128Decrypt(data, key, iv)
+	}
+
+	syncByte := uint8(71) //0x47
+	bLen := len(data)
+	for j := 0; j < bLen; j++ {
+		if data[j] == syncByte {
+			data = data[j:]
+			break
+		}
 	}
 
 	return data, nil
 }
 
-func decrypt(data, key, iv []byte) ([]byte, error) {
+func AES128Decrypt(crypted, key, iv []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
 	}
-
-	cbc := cipher.NewCBCDecrypter(block, iv)
-	cbc.CryptBlocks(data, data)
-
-	return zeroUnPadding(data), nil
+	blockSize := block.BlockSize()
+	if len(iv) == 0 {
+		iv = key
+	}
+	blockMode := cipher.NewCBCDecrypter(block, iv[:blockSize])
+	origData := make([]byte, len(crypted))
+	blockMode.CryptBlocks(origData, crypted)
+	origData = pkcs5UnPadding(origData)
+	return origData, nil
 }
 
-func zeroUnPadding(origData []byte) []byte {
+func pkcs5Padding(cipherText []byte, blockSize int) []byte {
+	padding := blockSize - len(cipherText)%blockSize
+	padText := bytes.Repeat([]byte{byte(padding)}, padding)
+	return append(cipherText, padText...)
+}
+
+func pkcs5UnPadding(origData []byte) []byte {
 	length := len(origData)
-	unpadding := int(origData[length-1])
-	return origData[:(length - unpadding)]
+	unPadding := int(origData[length-1])
+	return origData[:(length - unPadding)]
 }
 
 func (hlsDl *HlsDl) GetKey(segment *Segment) (key []byte, iv []byte, err error) {
@@ -66,14 +87,6 @@ func (hlsDl *HlsDl) GetKey(segment *Segment) (key []byte, iv []byte, err error) 
 		return nil, nil, err
 	}
 
-	if segment.Key.IV != "" {
-		iv, err = hex.DecodeString(strings.TrimPrefix(segment.Key.IV, "0x"))
-		if err != nil {
-			return nil, nil, err
-		}
-	} else {
-		iv = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, byte(segment.SeqId)}
-	}
-
+	iv = []byte(segment.Key.IV)
 	return
 }
