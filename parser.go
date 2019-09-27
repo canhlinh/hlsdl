@@ -24,7 +24,7 @@ func parseHlsSegments(hlsURL string) ([]*Segment, error) {
 		return nil, errors.New(res.Status)
 	}
 
-	p, t, err := m3u8.DecodeFrom(res.Body, true)
+	p, t, err := m3u8.DecodeFrom(res.Body, false)
 	if err != nil {
 		return nil, err
 	}
