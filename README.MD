@@ -4,12 +4,12 @@ This is a library to support downloading a hls file.
 
 ### Features:
 * Concurrent download segments with multiple http connections
+* Decrypt hls encoded segments
+* Auto retry download
 
 
 ### Todo:
 * Allow adding http headers
-* Decrypt hls encoded segments
-
 
 ### How to use
 

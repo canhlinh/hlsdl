@@ -8,7 +8,9 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/grafov/m3u8"
 )
@@ -88,7 +90,24 @@ func (hlsDl *HlsDl) downloadMediaSegments(segments []*Segment) error {
 			defer wg.Done()
 
 			for segment := range segmentChan {
+
+				tried := 0
+			DOWNLOAD:
+				tried++
+
+				select {
+				case <-quitChan:
+					return
+				default:
+				}
+
 				if err := hlsDl.downloadSegment(segment); err != nil {
+					if strings.Contains(err.Error(), "connection reset by peer") && tried < 3 {
+						time.Sleep(time.Second)
+						log.Println("Retry download segment ", segment.SeqId)
+						goto DOWNLOAD
+					}
+
 					errHandlerChan <- &DownloadError{err}
 					return
 				}
@@ -124,6 +143,8 @@ func (hlsDl *HlsDl) downloadMediaSegments(segments []*Segment) error {
 }
 
 func (hlsDl *HlsDl) join(dir string, segments []*Segment) (string, error) {
+	log.Println("Joining segments")
+
 	filepath := fmt.Sprintf("%s/video.ts", dir)
 
 	file, err := os.Create(filepath)
