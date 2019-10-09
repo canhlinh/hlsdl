@@ -10,6 +10,7 @@ This is a library to support downloading a hls file.
 
 ### Todo:
 * Allow adding http headers
+* Display downloading progress bar
 
 ### How to use
 
@@ -34,4 +35,26 @@ func main() {
 	}
 }
 
+```
+
+### How to build a console application
+
+Build for linux
+```
+make build-linux
+```
+
+Build for windows
+```
+make build-windows
+```
+
+Run the application
+
+```
+./bin/hlsdl --help
+```
+
+```
+./bin/hlsdl -u https://bitdash-a.akamaihd.net/content/sintel/hls/video/1500kbit.m3u8 -d download -w 10
 ```

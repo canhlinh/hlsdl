@@ -12,7 +12,7 @@ import (
 func parseHlsSegments(hlsURL string) ([]*Segment, error) {
 	baseURL, err := url.Parse(hlsURL)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("Invalid m3u8 url")
 	}
 
 	res, err := http.Get(hlsURL)
