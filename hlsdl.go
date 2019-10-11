@@ -13,14 +13,17 @@ import (
 	"time"
 
 	"github.com/grafov/m3u8"
+	"gopkg.in/cheggaaa/pb.v1"
 )
 
 // HlsDl present a HLS downloader
 type HlsDl struct {
-	client  *http.Client
-	dir     string
-	hlsURL  string
-	workers int
+	client    *http.Client
+	dir       string
+	hlsURL    string
+	workers   int
+	bar       *pb.ProgressBar
+	enableBar bool
 }
 
 type Segment struct {
@@ -28,17 +31,21 @@ type Segment struct {
 	Path string
 }
 
-type DownloadError struct {
-	Err error
+type DownloadResult struct {
+	Err   error
+	SeqId uint64
 }
 
-func New(hlsURL string, dir string, workers int) *HlsDl {
-	return &HlsDl{
-		hlsURL:  hlsURL,
-		dir:     dir,
-		client:  &http.Client{},
-		workers: workers,
+func New(hlsURL string, dir string, workers int, enableBar bool) *HlsDl {
+	hlsdl := &HlsDl{
+		hlsURL:    hlsURL,
+		dir:       dir,
+		client:    &http.Client{},
+		workers:   workers,
+		enableBar: enableBar,
 	}
+
+	return hlsdl
 }
 
 func wait(wg *sync.WaitGroup) chan bool {
@@ -51,7 +58,6 @@ func wait(wg *sync.WaitGroup) chan bool {
 }
 
 func (hlsDl *HlsDl) downloadSegment(segment *Segment) error {
-	log.Printf("Downloading segment %d \n", segment.SeqId)
 
 	res, err := hlsDl.client.Get(segment.URI)
 	if err != nil {
@@ -71,7 +77,6 @@ func (hlsDl *HlsDl) downloadSegment(segment *Segment) error {
 		return err
 	}
 
-	log.Printf("Downloaded segment %d \n", segment.SeqId)
 	return nil
 }
 
@@ -80,10 +85,10 @@ func (hlsDl *HlsDl) downloadMediaSegments(segments []*Segment) error {
 	wg := &sync.WaitGroup{}
 	wg.Add(hlsDl.workers)
 
-	doneChan := wait(wg)
+	finishedChan := wait(wg)
 	quitChan := make(chan bool)
 	segmentChan := make(chan *Segment)
-	errHandlerChan := make(chan *DownloadError, hlsDl.workers)
+	downloadResultChan := make(chan *DownloadResult, hlsDl.workers)
 
 	for i := 0; i < hlsDl.workers; i++ {
 		go func() {
@@ -108,9 +113,11 @@ func (hlsDl *HlsDl) downloadMediaSegments(segments []*Segment) error {
 						goto DOWNLOAD
 					}
 
-					errHandlerChan <- &DownloadError{err}
+					downloadResultChan <- &DownloadResult{Err: err, SeqId: segment.SeqId}
 					return
 				}
+
+				downloadResultChan <- &DownloadResult{SeqId: segment.SeqId}
 			}
 		}()
 	}
@@ -130,20 +137,38 @@ func (hlsDl *HlsDl) downloadMediaSegments(segments []*Segment) error {
 
 	}()
 
+	if hlsDl.enableBar {
+		hlsDl.bar = pb.New(len(segments)).SetMaxWidth(100).Prefix("Downloading...")
+		hlsDl.bar.ShowElapsedTime = true
+		hlsDl.bar.Start()
+	}
+
+	defer func() {
+		if hlsDl.enableBar {
+			hlsDl.bar.Finish()
+		}
+	}()
+
 	for {
 		select {
-		case <-doneChan:
+		case <-finishedChan:
 			return nil
-		case err := <-errHandlerChan:
-			close(quitChan)
-			return err.Err
+		case result := <-downloadResultChan:
+			if result.Err != nil {
+				close(quitChan)
+				return result.Err
+			}
+
+			if hlsDl.enableBar {
+				hlsDl.bar.Increment()
+			}
 		}
 	}
 
 }
 
 func (hlsDl *HlsDl) join(dir string, segments []*Segment) (string, error) {
-	log.Println("Joining segments")
+	fmt.Println("Joining segments")
 
 	filepath := fmt.Sprintf("%s/video.ts", dir)
 

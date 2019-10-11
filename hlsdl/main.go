@@ -41,7 +41,7 @@ func cmdF(command *cobra.Command, args []string) error {
 		return err
 	}
 
-	hlsDL := hlsdl.New(m3u8URL, dir, workers)
+	hlsDL := hlsdl.New(m3u8URL, dir, workers, true)
 	filepath, err := hlsDL.Download()
 	if err != nil {
 		return err

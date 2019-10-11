@@ -6,11 +6,11 @@ This is a library to support downloading a hls file.
 * Concurrent download segments with multiple http connections
 * Decrypt hls encoded segments
 * Auto retry download
+* Display downloading progress bar
 
 
 ### Todo:
 * Allow adding http headers
-* Display downloading progress bar
 
 ### How to use
 
@@ -58,3 +58,5 @@ Run the application
 ```
 ./bin/hlsdl -u https://bitdash-a.akamaihd.net/content/sintel/hls/video/1500kbit.m3u8 -d download -w 10
 ```
+
+![example](example/hlsdl.gif)
