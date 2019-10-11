@@ -16,6 +16,7 @@ func (hlsDl *HlsDl) Decrypt(segment *Segment) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer file.Close()
 
 	data, err := ioutil.ReadAll(file)
 	if err != nil {
