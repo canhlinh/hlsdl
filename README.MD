@@ -12,11 +12,15 @@ This is a library to support downloading a m3u8 file. All ts segments will be do
 ### Todo:
 * Allow adding http headers
 
-### How to use
+### How to integrate this library to your code.
 
-Get library
+Get the library
 ```
 go get github.com/canhlinh/hlsdl
+```
+then import it to your code.
+```
+import "github.com/canhlinh/hlsdl"
 ```
 
 Sample:
