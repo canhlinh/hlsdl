@@ -1,5 +1,5 @@
 # HLS downloader
-This is a library to support downloading a hls file. 
+This is a library to support downloading a m3u8 file. All ts segments will be downloaded into a folder then be joined into a single TS file. Default file name is `video.ts`
 
 
 ### Features:
