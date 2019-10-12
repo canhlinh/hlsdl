@@ -80,7 +80,7 @@ func (hlsDl *HlsDl) downloadSegment(segment *Segment) error {
 	return nil
 }
 
-func (hlsDl *HlsDl) downloadMediaSegments(segments []*Segment) error {
+func (hlsDl *HlsDl) downloadSegments(segments []*Segment) error {
 
 	wg := &sync.WaitGroup{}
 	wg.Add(hlsDl.workers)
@@ -211,7 +211,7 @@ func (hlsDl *HlsDl) Download() (string, error) {
 		return "", err
 	}
 
-	if err := hlsDl.downloadMediaSegments(segs); err != nil {
+	if err := hlsDl.downloadSegments(segs); err != nil {
 		return "", err
 	}
 
