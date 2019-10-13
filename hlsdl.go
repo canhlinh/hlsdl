@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -72,6 +73,7 @@ func (hlsDl *HlsDl) downloadSegment(segment *Segment) error {
 	if err != nil {
 		return err
 	}
+	defer file.Close()
 
 	if _, err := io.Copy(file, res.Body); err != nil {
 		return err
@@ -126,7 +128,8 @@ func (hlsDl *HlsDl) downloadSegments(segments []*Segment) error {
 		defer close(segmentChan)
 
 		for _, segment := range segments {
-			segment.Path = fmt.Sprintf("%s/seg%d.ts", hlsDl.dir, segment.SeqId)
+			segName := fmt.Sprintf("seg%d.ts", segment.SeqId)
+			segment.Path = filepath.Join(hlsDl.dir, segName)
 
 			select {
 			case segmentChan <- segment:
@@ -170,12 +173,13 @@ func (hlsDl *HlsDl) downloadSegments(segments []*Segment) error {
 func (hlsDl *HlsDl) join(dir string, segments []*Segment) (string, error) {
 	fmt.Println("Joining segments")
 
-	filepath := fmt.Sprintf("%s/video.ts", dir)
+	filepath := filepath.Join(dir, "video.ts")
 
 	file, err := os.Create(filepath)
 	if err != nil {
 		return "", err
 	}
+	defer file.Close()
 
 	sort.Slice(segments, func(i, j int) bool {
 		return segments[i].SeqId < segments[j].SeqId
@@ -197,7 +201,6 @@ func (hlsDl *HlsDl) join(dir string, segments []*Segment) (string, error) {
 		}
 	}
 
-	file.Close()
 	return filepath, nil
 }
 
