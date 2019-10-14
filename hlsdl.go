@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -16,6 +17,10 @@ import (
 	"github.com/grafov/m3u8"
 	"gopkg.in/cheggaaa/pb.v1"
 )
+
+func init() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
+}
 
 // HlsDl present a HLS downloader
 type HlsDl struct {
