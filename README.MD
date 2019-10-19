@@ -7,6 +7,7 @@ This is a library to support downloading a m3u8 file. All ts segments will be do
 * Decrypt hls encoded segments
 * Auto retry download
 * Display downloading progress bar
+* Record a live stream video
 
 
 ### Todo:
@@ -64,3 +65,9 @@ Run the application
 ```
 
 ![example](example/hlsdl.gif)
+
+Record a live stream video
+
+```
+./bin/hlsdl --url "http://cdn1.live-tv.od.ua:8081/bbb/bbbtv-abr/bbb/bbbtv-720p/chunks.m3u8?nimblesessionid=62115268" --record true
+```
