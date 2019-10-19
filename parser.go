@@ -15,16 +15,7 @@ func parseHlsSegments(hlsURL string) ([]*Segment, error) {
 		return nil, errors.New("Invalid m3u8 url")
 	}
 
-	res, err := http.Get(hlsURL)
-	if err != nil {
-		return nil, err
-	}
-
-	if res.StatusCode != 200 {
-		return nil, errors.New(res.Status)
-	}
-
-	p, t, err := m3u8.DecodeFrom(res.Body, false)
+	p, t, err := getM3u8ListType(hlsURL)
 	if err != nil {
 		return nil, err
 	}
@@ -66,4 +57,22 @@ func parseHlsSegments(hlsURL string) ([]*Segment, error) {
 	}
 
 	return segments, nil
+}
+
+func getM3u8ListType(hlsURL string) (m3u8.Playlist, m3u8.ListType, error) {
+	res, err := http.Get(hlsURL)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if res.StatusCode != 200 {
+		return nil, 0, errors.New(res.Status)
+	}
+
+	p, t, err := m3u8.DecodeFrom(res.Body, false)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return p, t, nil
 }

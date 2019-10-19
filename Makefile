@@ -1,5 +1,5 @@
 build:
-	go build -o ./bin/hlsdl ./hlsdl
+	go build -o ./bin/hlsdl ./cmd/hlsdl
 
 build_linux:
 	env GOOS=linux GOARCH=amd64 go build -o ./bin/hlsdl_linux ./cmd/hlsdl
