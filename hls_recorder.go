@@ -46,11 +46,11 @@ func (r *Recorder) Start() (string, error) {
 
 		segmentData, err := r.getSegmentData(segment.Segment)
 		if err != nil {
-			return "", segment.Err
+			return "", err
 		}
 
 		if _, err := file.Write(segmentData); err != nil {
-			return "", segment.Err
+			return "", err
 		}
 
 		log.Println("Recorded segment ", segment.Segment.SeqId)
@@ -76,11 +76,16 @@ func (r *Recorder) getSegmentData(segment *Segment) ([]byte, error) {
 	}
 
 	if segment.Key != nil {
+
 		key, iv, err := r.getKey(segment)
 		if err != nil {
 			return nil, err
 		}
 		data, err = AES128Decrypt(data, key, iv)
+
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	syncByte := uint8(71) //0x47
@@ -96,6 +101,7 @@ func (r *Recorder) getSegmentData(segment *Segment) ([]byte, error) {
 }
 
 func (r *Recorder) getKey(segment *Segment) (key []byte, iv []byte, err error) {
+
 	res, err := r.client.Get(segment.Key.URI)
 	if err != nil {
 		return nil, nil, err

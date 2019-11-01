@@ -69,18 +69,21 @@ func pullSegment(hlsURL string, quitSignal chan os.Signal) chan *SegmentPuller {
 					seg.URI = segmentURL.String()
 				}
 
-				if seg.Key == nil && mediaList.Key != nil {
+				if seg.Key == nil && mediaList.Key != nil && mediaList.Key.Method != "NONE" {
 					seg.Key = mediaList.Key
 				}
 
-				if seg.Key != nil && !strings.Contains(seg.Key.URI, "http") {
-					keyURL, err := baseURL.Parse(seg.Key.URI)
-					if err != nil {
-						c <- &SegmentPuller{Err: err}
-						return
+				if seg.Key != nil {
+					if seg.Key.Method == "NONE" {
+						seg.Key = nil
+					} else if !strings.Contains(seg.Key.URI, "http") {
+						keyURL, err := baseURL.Parse(seg.Key.URI)
+						if err != nil {
+							c <- &SegmentPuller{Err: err}
+							return
+						}
+						seg.Key.URI = keyURL.String()
 					}
-
-					seg.Key.URI = keyURL.String()
 				}
 
 				select {
