@@ -25,6 +25,7 @@ func NewRecorder(url string, dir string) *Recorder {
 	}
 }
 
+// Start starts a record a live streaming
 func (r *Recorder) Start() (string, error) {
 	log.Println("Start record live streaming movie...")
 
@@ -39,14 +40,22 @@ func (r *Recorder) Start() (string, error) {
 	}
 	defer file.Close()
 
+LOOP:
 	for segment := range puller {
 		if segment.Err != nil {
 			return "", segment.Err
 		}
 
-		segmentData, err := r.getSegmentData(segment.Segment)
-		if err != nil {
-			return "", err
+		dc := r.downloadSegmentC(segment.Segment)
+		segmentData := []byte{}
+
+		select {
+		case report := <-dc:
+			if report.Err != nil {
+				return "", report.Err
+			}
+		case <-quitSignal:
+			break LOOP
 		}
 
 		if _, err := file.Write(segmentData); err != nil {
@@ -59,7 +68,25 @@ func (r *Recorder) Start() (string, error) {
 	return filePath, nil
 }
 
-func (r *Recorder) getSegmentData(segment *Segment) ([]byte, error) {
+type DownloadSegmentReport struct {
+	Data []byte
+	Err  error
+}
+
+func (r *Recorder) downloadSegmentC(segment *Segment) chan *DownloadSegmentReport {
+	c := make(chan *DownloadSegmentReport, 1)
+	go func() {
+		data, err := r.downloadSegment(segment)
+		c <- &DownloadSegmentReport{
+			Data: data,
+			Err:  err,
+		}
+	}()
+
+	return c
+}
+
+func (r *Recorder) downloadSegment(segment *Segment) ([]byte, error) {
 
 	res, err := r.client.Get(segment.URI)
 	if err != nil {
