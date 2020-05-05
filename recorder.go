@@ -47,19 +47,18 @@ LOOP:
 		}
 
 		dc := r.downloadSegmentC(segment.Segment)
-		segmentData := []byte{}
 
 		select {
 		case report := <-dc:
 			if report.Err != nil {
 				return "", report.Err
 			}
+
+			if _, err := file.Write(report.Data); err != nil {
+				return "", err
+			}
 		case <-quitSignal:
 			break LOOP
-		}
-
-		if _, err := file.Write(segmentData); err != nil {
-			return "", err
 		}
 
 		log.Println("Recorded segment ", segment.Segment.SeqId)
