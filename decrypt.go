@@ -4,56 +4,22 @@ import (
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
+	"encoding/binary"
 	"errors"
 	"io/ioutil"
-	"log"
 	"os"
 )
 
-func (hlsDl *HlsDl) Decrypt(segment *Segment) ([]byte, error) {
+const (
+	syncByte = uint8(71) //0x47
+)
 
-	file, err := os.Open(segment.Path)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	data, err := ioutil.ReadAll(file)
-	if err != nil {
-		return nil, err
-	}
-
-	if segment.Key != nil {
-		key, iv, err := hlsDl.GetKey(segment)
-		if err != nil {
-			return nil, err
-		}
-
-		log.Println("Descrypting", len(key), len(iv))
-		data, err = AES128Decrypt(data, key, iv)
-	}
-
-	syncByte := uint8(71) //0x47
-	bLen := len(data)
-	for j := 0; j < bLen; j++ {
-		if data[j] == syncByte {
-			data = data[j:]
-			break
-		}
-	}
-
-	return data, nil
-}
-
-func AES128Decrypt(crypted, key, iv []byte) ([]byte, error) {
+func decryptAES128(crypted, key, iv []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
 	}
 	blockSize := block.BlockSize()
-	if len(iv) == 0 {
-		iv = key
-	}
 	blockMode := cipher.NewCBCDecrypter(block, iv[:blockSize])
 	origData := make([]byte, len(crypted))
 	blockMode.CryptBlocks(origData, crypted)
@@ -73,7 +39,42 @@ func pkcs5UnPadding(origData []byte) []byte {
 	return origData[:(length - unPadding)]
 }
 
-func (hlsDl *HlsDl) GetKey(segment *Segment) (key []byte, iv []byte, err error) {
+// Decrypt descryps a segment
+func (hlsDl *HlsDl) decrypt(segment *Segment) ([]byte, error) {
+
+	file, err := os.Open(segment.Path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	data, err := ioutil.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
+
+	if segment.Key != nil {
+		key, iv, err := hlsDl.getKey(segment)
+		if err != nil {
+			return nil, err
+		}
+		data, err = decryptAES128(data, key, iv)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	for j := 0; j < len(data); j++ {
+		if data[j] == syncByte {
+			data = data[j:]
+			break
+		}
+	}
+
+	return data, nil
+}
+
+func (hlsDl *HlsDl) getKey(segment *Segment) (key []byte, iv []byte, err error) {
 	res, err := hlsDl.client.Get(segment.Key.URI)
 	if err != nil {
 		return nil, nil, err
@@ -89,5 +90,14 @@ func (hlsDl *HlsDl) GetKey(segment *Segment) (key []byte, iv []byte, err error) 
 	}
 
 	iv = []byte(segment.Key.IV)
+	if len(iv) == 0 {
+		iv = defaultIV(segment.SeqId)
+	}
 	return
+}
+
+func defaultIV(seqID uint64) []byte {
+	buf := make([]byte, 16)
+	binary.BigEndian.PutUint64(buf[8:], seqID)
+	return buf
 }
