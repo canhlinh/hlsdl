@@ -9,13 +9,13 @@ import (
 	"github.com/grafov/m3u8"
 )
 
-func parseHlsSegments(hlsURL string) ([]*Segment, error) {
+func parseHlsSegments(hlsURL string, headers map[string]string) ([]*Segment, error) {
 	baseURL, err := url.Parse(hlsURL)
 	if err != nil {
 		return nil, errors.New("Invalid m3u8 url")
 	}
 
-	p, t, err := getM3u8ListType(hlsURL)
+	p, t, err := getM3u8ListType(hlsURL, headers)
 	if err != nil {
 		return nil, err
 	}
@@ -59,11 +59,29 @@ func parseHlsSegments(hlsURL string) ([]*Segment, error) {
 	return segments, nil
 }
 
-func getM3u8ListType(hlsURL string) (m3u8.Playlist, m3u8.ListType, error) {
-	res, err := http.Get(hlsURL)
+func newRequest(url string, headers map[string]string) (*http.Request, error) {
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
+	return req, nil
+}
+
+func getM3u8ListType(url string, headers map[string]string) (m3u8.Playlist, m3u8.ListType, error) {
+
+	req, err := newRequest(url, headers)
 	if err != nil {
 		return nil, 0, err
 	}
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer res.Body.Close()
 
 	if res.StatusCode != 200 {
 		return nil, 0, errors.New(res.Status)

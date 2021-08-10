@@ -25,6 +25,7 @@ func init() {
 // HlsDl present a HLS downloader
 type HlsDl struct {
 	client    *http.Client
+	headers   map[string]string
 	dir       string
 	hlsURL    string
 	workers   int
@@ -42,13 +43,14 @@ type DownloadResult struct {
 	SeqId uint64
 }
 
-func New(hlsURL string, dir string, workers int, enableBar bool) *HlsDl {
+func New(hlsURL string, headers map[string]string, dir string, workers int, enableBar bool) *HlsDl {
 	hlsdl := &HlsDl{
 		hlsURL:    hlsURL,
 		dir:       dir,
 		client:    &http.Client{},
 		workers:   workers,
 		enableBar: enableBar,
+		headers:   headers,
 	}
 
 	return hlsdl
@@ -64,11 +66,16 @@ func wait(wg *sync.WaitGroup) chan bool {
 }
 
 func (hlsDl *HlsDl) downloadSegment(segment *Segment) error {
-
-	res, err := hlsDl.client.Get(segment.URI)
+	req, err := newRequest(segment.URI, hlsDl.headers)
 	if err != nil {
 		return err
 	}
+
+	res, err := hlsDl.client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
 
 	if res.StatusCode != 200 {
 		return errors.New(res.Status)
@@ -210,7 +217,7 @@ func (hlsDl *HlsDl) join(dir string, segments []*Segment) (string, error) {
 }
 
 func (hlsDl *HlsDl) Download() (string, error) {
-	segs, err := parseHlsSegments(hlsDl.hlsURL)
+	segs, err := parseHlsSegments(hlsDl.hlsURL, hlsDl.headers)
 	if err != nil {
 		return "", err
 	}

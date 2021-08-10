@@ -31,7 +31,7 @@ func pullSegment(hlsURL string, quitSignal chan os.Signal) chan *SegmentPuller {
 		pulledSegment := map[uint64]bool{}
 
 		for {
-			p, t, err := getM3u8ListType(hlsURL)
+			p, t, err := getM3u8ListType(hlsURL, nil)
 			if err != nil {
 				c <- &SegmentPuller{Err: err}
 				return

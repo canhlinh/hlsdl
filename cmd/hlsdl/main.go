@@ -52,7 +52,7 @@ func cmdF(command *cobra.Command, args []string) error {
 }
 
 func downloadVodMovie(url string, dir string, workers int) error {
-	hlsDL := hlsdl.New(url, dir, workers, true)
+	hlsDL := hlsdl.New(url, nil, dir, workers, true)
 	filepath, err := hlsDL.Download()
 	if err != nil {
 		return err
