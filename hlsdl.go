@@ -199,7 +199,7 @@ func (hlsDl *HlsDl) join(dir string, segments []*Segment) (string, error) {
 
 	for _, segment := range segments {
 
-		d, err := hlsDl.Decrypt(segment)
+		d, err := hlsDl.decrypt(segment)
 		if err != nil {
 			return "", err
 		}

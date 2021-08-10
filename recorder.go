@@ -102,21 +102,17 @@ func (r *Recorder) downloadSegment(segment *Segment) ([]byte, error) {
 	}
 
 	if segment.Key != nil {
-
 		key, iv, err := r.getKey(segment)
 		if err != nil {
 			return nil, err
 		}
-		data, err = AES128Decrypt(data, key, iv)
-
+		data, err = decryptAES128(data, key, iv)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	syncByte := uint8(71) //0x47
-	bLen := len(data)
-	for j := 0; j < bLen; j++ {
+	for j := 0; j < len(data); j++ {
 		if data[j] == syncByte {
 			data = data[j:]
 			break
@@ -143,5 +139,8 @@ func (r *Recorder) getKey(segment *Segment) (key []byte, iv []byte, err error) {
 	}
 
 	iv = []byte(segment.Key.IV)
+	if len(iv) == 0 {
+		iv = defaultIV(segment.SeqId)
+	}
 	return
 }

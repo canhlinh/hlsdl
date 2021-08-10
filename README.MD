@@ -71,3 +71,5 @@ Record a live stream video
 ```
 ./bin/hlsdl --url "http://cdn1.live-tv.od.ua:8081/bbb/bbbtv-abr/bbb/bbbtv-720p/chunks.m3u8?nimblesessionid=62115268" --record true
 ```
+
+## Get prebuild here https://github.com/canhlinh/hlsdl/releases *
