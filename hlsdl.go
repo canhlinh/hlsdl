@@ -185,7 +185,7 @@ func (hlsDl *HlsDl) downloadSegments(segments []*Segment) error {
 func (hlsDl *HlsDl) join(dir string, segments []*Segment) (string, error) {
 	fmt.Println("Joining segments")
 
-	filepath := filepath.Join(dir, "video.ts")
+	filepath := filepath.Join(dir, getTimestamp()+".ts")
 
 	file, err := os.Create(filepath)
 	if err != nil {
