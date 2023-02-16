@@ -31,6 +31,7 @@ type HlsDl struct {
 	workers   int
 	bar       *pb.ProgressBar
 	enableBar bool
+	filename  string
 }
 
 type Segment struct {
@@ -43,7 +44,11 @@ type DownloadResult struct {
 	SeqId uint64
 }
 
-func New(hlsURL string, headers map[string]string, dir string, workers int, enableBar bool) *HlsDl {
+func New(hlsURL string, headers map[string]string, dir string, workers int, enableBar bool, filename string) *HlsDl {
+	if filename == "" {
+		filename = getTimestamp()
+	}
+
 	hlsdl := &HlsDl{
 		hlsURL:    hlsURL,
 		dir:       dir,
@@ -51,6 +56,7 @@ func New(hlsURL string, headers map[string]string, dir string, workers int, enab
 		workers:   workers,
 		enableBar: enableBar,
 		headers:   headers,
+		filename:  filename,
 	}
 
 	return hlsdl
@@ -185,7 +191,7 @@ func (hlsDl *HlsDl) downloadSegments(segments []*Segment) error {
 func (hlsDl *HlsDl) join(dir string, segments []*Segment) (string, error) {
 	fmt.Println("Joining segments")
 
-	filepath := filepath.Join(dir, getTimestamp()+".ts")
+	filepath := filepath.Join(dir, hlsDl.filename+".ts")
 
 	file, err := os.Create(filepath)
 	if err != nil {
