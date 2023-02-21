@@ -46,7 +46,7 @@ type DownloadResult struct {
 
 func New(hlsURL string, headers map[string]string, dir string, workers int, enableBar bool, filename string) *HlsDl {
 	if filename == "" {
-		filename = getTimestamp()
+		filename = getFilename()
 	}
 
 	hlsdl := &HlsDl{
@@ -191,7 +191,7 @@ func (hlsDl *HlsDl) downloadSegments(segments []*Segment) error {
 func (hlsDl *HlsDl) join(dir string, segments []*Segment) (string, error) {
 	fmt.Println("Joining segments")
 
-	filepath := filepath.Join(dir, hlsDl.filename+".ts")
+	filepath := filepath.Join(dir, hlsDl.filename)
 
 	file, err := os.Create(filepath)
 	if err != nil {

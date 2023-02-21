@@ -11,6 +11,6 @@ func printStruct(v interface{}) {
 	fmt.Println(string(d))
 }
 
-func getTimestamp() string {
-	return time.Now().Format("20060102150405")
+func getFilename() string {
+	return time.Now().Format("20060102150405") + ".ts"
 }
