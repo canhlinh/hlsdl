@@ -2,6 +2,7 @@ package hlsdl
 
 import (
 	"errors"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -11,21 +12,28 @@ import (
 )
 
 type Recorder struct {
-	client *http.Client
-	dir    string
-	url    string
-	runing bool
+	client   *http.Client
+	dir      string
+	url      string
+	runing   bool
+	filename string
 }
 
-func NewRecorder(url string, dir string) *Recorder {
+func NewRecorder(url string, dir string, filenames ...string) *Recorder {
+	filename := getFilename()
+	if len(filenames) > 0 {
+		filename = filenames[0]
+	}
+
 	return &Recorder{
-		url:    url,
-		dir:    dir,
-		client: &http.Client{},
+		url:      url,
+		dir:      dir,
+		client:   &http.Client{},
+		filename: filename,
 	}
 }
 
-// Start starts a record a live streaming
+// Function Start records a live streaming
 func (r *Recorder) Start() (string, error) {
 	log.Println("Start record live streaming movie...")
 
@@ -33,7 +41,7 @@ func (r *Recorder) Start() (string, error) {
 	signal.Notify(quitSignal, os.Interrupt)
 	puller := pullSegment(r.url, quitSignal)
 
-	filePath := filepath.Join(r.dir, "video.ts")
+	filePath := filepath.Join(r.dir, r.filename)
 	file, err := os.Create(filePath)
 	if err != nil {
 		return "", err
@@ -96,7 +104,7 @@ func (r *Recorder) downloadSegment(segment *Segment) ([]byte, error) {
 		return nil, errors.New(res.Status)
 	}
 
-	data, err := ioutil.ReadAll(res.Body)
+	data, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +138,7 @@ func (r *Recorder) getKey(segment *Segment) (key []byte, iv []byte, err error) {
 	}
 
 	if res.StatusCode != 200 {
-		return nil, nil, errors.New("Failed to get descryption key")
+		return nil, nil, errors.New("failed to get description key")
 	}
 
 	key, err = ioutil.ReadAll(res.Body)
