@@ -1,11 +1,11 @@
 # HLS downloader
-This is a library to support downloading a m3u8 file. All ts segments will be downloaded into a folder then be joined into a single TS file. Default file name is `video.ts`
+This is a library to support downloading a m3u8 file. All TS segments will be downloaded into a folder and then joined into a single TS file. The default file name is `video.ts`
 
 
 ### Features:
 * Concurrent download segments with multiple http connections
-* Decrypt hls encoded segments
-* Auto retry download
+* Decrypt HLS-encoded segments
+* Auto-retry download
 * Display downloading progress bar
 * Record a live stream video
 
@@ -13,7 +13,7 @@ This is a library to support downloading a m3u8 file. All ts segments will be do
 ### Todo:
 * Allow adding http headers
 
-### How to integrate this library to your code.
+### How to integrate this library into your code
 
 Get the library
 ```
