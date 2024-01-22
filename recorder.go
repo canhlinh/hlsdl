@@ -2,26 +2,32 @@ package hlsdl
 
 import (
 	"errors"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"time"
+
+	"github.com/go-resty/resty/v2"
 )
 
 type Recorder struct {
-	client *http.Client
-	dir    string
-	url    string
-	runing bool
+	client    *resty.Client
+	dir       string
+	url       string
+	headers   map[string]string
+	filename  string
+	startTime int64
 }
 
-func NewRecorder(url string, dir string) *Recorder {
+func NewRecorder(url string, headers map[string]string, dir, filename string) *Recorder {
 	return &Recorder{
-		url:    url,
-		dir:    dir,
-		client: &http.Client{},
+		url:       url,
+		dir:       dir,
+		client:    resty.New(),
+		headers:   headers,
+		filename:  filename,
+		startTime: time.Now().UnixMilli(),
 	}
 }
 
@@ -32,8 +38,7 @@ func (r *Recorder) Start() (string, error) {
 	quitSignal := make(chan os.Signal, 1)
 	signal.Notify(quitSignal, os.Interrupt)
 	puller := pullSegment(r.url, quitSignal)
-
-	filePath := filepath.Join(r.dir, "video.ts")
+	filePath := filepath.Join(r.dir, r.filename)
 	file, err := os.Create(filePath)
 	if err != nil {
 		return "", err
@@ -81,26 +86,18 @@ func (r *Recorder) downloadSegmentC(segment *Segment) chan *DownloadSegmentRepor
 			Err:  err,
 		}
 	}()
-
 	return c
 }
 
 func (r *Recorder) downloadSegment(segment *Segment) ([]byte, error) {
-
-	res, err := r.client.Get(segment.URI)
+	res, err := r.client.R().SetHeaders(r.headers).Get(segment.URI)
 	if err != nil {
 		return nil, err
 	}
-
-	if res.StatusCode != 200 {
-		return nil, errors.New(res.Status)
+	if res.StatusCode() != 200 {
+		return nil, errors.New(res.Status())
 	}
-
-	data, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, err
-	}
-
+	data := res.Body()
 	if segment.Key != nil {
 		key, iv, err := r.getKey(segment)
 		if err != nil {
@@ -123,21 +120,16 @@ func (r *Recorder) downloadSegment(segment *Segment) ([]byte, error) {
 }
 
 func (r *Recorder) getKey(segment *Segment) (key []byte, iv []byte, err error) {
-
-	res, err := r.client.Get(segment.Key.URI)
+	res, err := r.client.R().SetHeaders(r.headers).Get(segment.Key.URI)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	if res.StatusCode != 200 {
+	if res.StatusCode() != 200 {
 		return nil, nil, errors.New("Failed to get descryption key")
 	}
 
-	key, err = ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, nil, err
-	}
-
+	key = res.Body()
 	iv = []byte(segment.Key.IV)
 	if len(iv) == 0 {
 		iv = defaultIV(segment.SeqId)

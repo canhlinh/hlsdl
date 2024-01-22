@@ -1,11 +1,13 @@
 package hlsdl
 
 import (
+	"bytes"
 	"errors"
-	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
+	"github.com/go-resty/resty/v2"
 	"github.com/grafov/m3u8"
 )
 
@@ -59,38 +61,19 @@ func parseHlsSegments(hlsURL string, headers map[string]string) ([]*Segment, err
 	return segments, nil
 }
 
-func newRequest(url string, headers map[string]string) (*http.Request, error) {
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return nil, err
-	}
-	for key, value := range headers {
-		req.Header.Set(key, value)
-	}
-	return req, nil
-}
-
 func getM3u8ListType(url string, headers map[string]string) (m3u8.Playlist, m3u8.ListType, error) {
-
-	req, err := newRequest(url, headers)
+	client := resty.New()
+	client.SetRetryCount(5).SetRetryWaitTime(time.Second)
+	resp, err := client.R().SetHeaders(headers).Get(url)
 	if err != nil {
 		return nil, 0, err
 	}
-
-	res, err := http.DefaultClient.Do(req)
+	if resp.StatusCode() != 200 {
+		return nil, 0, errors.New(resp.Status())
+	}
+	p, t, err := m3u8.DecodeFrom(bytes.NewReader(resp.Body()), false)
 	if err != nil {
 		return nil, 0, err
 	}
-	defer res.Body.Close()
-
-	if res.StatusCode != 200 {
-		return nil, 0, errors.New(res.Status)
-	}
-
-	p, t, err := m3u8.DecodeFrom(res.Body, false)
-	if err != nil {
-		return nil, 0, err
-	}
-
 	return p, t, nil
 }
