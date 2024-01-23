@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -77,8 +78,14 @@ func wait(wg *sync.WaitGroup) chan bool {
 
 func (hlsDl *HlsDl) downloadSegment(segment *Segment) error {
 	hlsDl.client.SetRetryCount(5).SetRetryWaitTime(time.Second)
-	_, err := hlsDl.client.R().SetHeaders(hlsDl.headers).SetOutput(segment.Path).Get(segment.URI)
-	return err
+	resp, err := hlsDl.client.R().SetHeaders(hlsDl.headers).SetOutput(segment.Path).Get(segment.URI)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode() != http.StatusOK {
+		return errors.New(resp.Status())
+	}
+	return nil
 }
 
 func (hlsDl *HlsDl) downloadSegments(segmentsDir string, segments []*Segment) error {
