@@ -133,13 +133,11 @@ func (hlsDl *HlsDl) downloadSegments(segmentsDir string, segments []*Segment) er
 			}
 		}
 	}()
-
+	hlsDl.segTotal = int64(len(segments))
 	if hlsDl.enableBar {
 		hlsDl.bar = pb.New(len(segments)).SetMaxWidth(100).Prefix("Downloading...")
 		hlsDl.bar.ShowElapsedTime = true
 		hlsDl.bar.Start()
-	} else {
-		hlsDl.segTotal = int64(len(segments))
 	}
 
 	defer func() {
@@ -273,5 +271,5 @@ func (hlsDl *HlsDl) GetProgress() float64 {
 	} else {
 		current = atomic.LoadInt64(&hlsDl.segCurrent)
 	}
-	return float64(current) / float64(hlsDl.bar.Total)
+	return float64(current) / float64(hlsDl.segTotal)
 }
