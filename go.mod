@@ -8,7 +8,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/spf13/cobra v0.0.5
-	golang.org/x/net v0.20.0 // indirect
+	golang.org/x/net v0.23.0 // indirect
 	gopkg.in/cheggaaa/pb.v1 v1.0.28
 )
 
