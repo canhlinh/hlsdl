@@ -17,7 +17,7 @@ func parseHlsSegments(hlsURL string, headers map[string]string) ([]*Segment, err
 		return nil, errors.New("Invalid m3u8 url")
 	}
 
-	p, t, err := getM3u8ListType(hlsURL, headers)
+	p, t, err := getM3u8ListType(hlsURL, headers, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -61,10 +61,10 @@ func parseHlsSegments(hlsURL string, headers map[string]string) ([]*Segment, err
 	return segments, nil
 }
 
-func getM3u8ListType(url string, headers map[string]string) (m3u8.Playlist, m3u8.ListType, error) {
+func getM3u8ListType(hlsurl string, headers map[string]string, depth int) (m3u8.Playlist, m3u8.ListType, error) {
 	client := resty.New()
 	client.SetRetryCount(5).SetRetryWaitTime(time.Second)
-	resp, err := client.R().SetHeaders(headers).Get(url)
+	resp, err := client.R().SetHeaders(headers).Get(hlsurl)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -74,6 +74,21 @@ func getM3u8ListType(url string, headers map[string]string) (m3u8.Playlist, m3u8
 	p, t, err := m3u8.DecodeFrom(bytes.NewReader(resp.Body()), false)
 	if err != nil {
 		return nil, 0, err
+	}
+	if t == m3u8.MASTER {
+		pt := p.(*m3u8.MasterPlaylist)
+		for _, pv := range pt.Variants {
+			var uo, err = url.Parse(pv.URI)
+			if err != nil {
+				return nil, 0, err
+			}
+			if !uo.IsAbs() {
+				var uo2, _ = url.Parse(hlsurl)
+				uo = uo2.ResolveReference(uo)
+			}
+			var ut = uo.String()
+			return getM3u8ListType(ut, headers, depth+1)
+		}
 	}
 	return p, t, nil
 }
