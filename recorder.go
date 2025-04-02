@@ -103,7 +103,7 @@ func (r *Recorder) downloadSegment(segment *Segment) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		data, err = decryptAES128(data, key, iv)
+		err = decryptAES128(data, key, iv)
 		if err != nil {
 			return nil, err
 		}

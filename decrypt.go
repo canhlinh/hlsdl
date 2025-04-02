@@ -11,17 +11,17 @@ const (
 	syncByte = uint8(71) //0x47
 )
 
-func decryptAES128(crypted, key, iv []byte) ([]byte, error) {
+func decryptAES128(data, key, iv []byte) error {
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	blockSize := block.BlockSize()
 	blockMode := cipher.NewCBCDecrypter(block, iv[:blockSize])
-	origData := make([]byte, len(crypted))
-	blockMode.CryptBlocks(origData, crypted)
-	origData = pkcs5UnPadding(origData)
-	return origData, nil
+	blockMode.CryptBlocks(data, data)
+	c := pkcs5UnPadding(data)
+	copy(data, c)
+	return nil
 }
 
 func pkcs5Padding(cipherText []byte, blockSize int) []byte {

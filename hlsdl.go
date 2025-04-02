@@ -1,9 +1,9 @@
 package hlsdl
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -181,8 +181,12 @@ func (hlsDl *HlsDl) join(segmentsDir string, segments []*Segment) (string, error
 	})
 
 	defer os.RemoveAll(segmentsDir)
+	var buf bytes.Buffer
+
 	for _, segment := range segments {
-		d, err := hlsDl.decrypt(segment)
+		buf.Reset()
+
+		d, err := hlsDl.decrypt(segment, &buf)
 		if err != nil {
 			return "", err
 		}
@@ -218,13 +222,13 @@ func (hlsDl *HlsDl) Download() (string, error) {
 }
 
 // Decrypt descryps a segment
-func (hlsDl *HlsDl) decrypt(segment *Segment) ([]byte, error) {
+func (hlsDl *HlsDl) decrypt(segment *Segment, d *bytes.Buffer) ([]byte, error) {
 	file, err := os.Open(segment.Path)
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
-	data, err := io.ReadAll(file)
+	_, err = d.ReadFrom(file)
 	if err != nil {
 		return nil, err
 	}
@@ -233,20 +237,20 @@ func (hlsDl *HlsDl) decrypt(segment *Segment) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		data, err = decryptAES128(data, key, iv)
+		err = decryptAES128(d.Bytes(), key, iv)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	for j := 0; j < len(data); j++ {
-		if data[j] == syncByte {
-			data = data[j:]
+	for j := 0; j < len(d.Bytes()); j++ {
+		if d.Bytes()[j] == syncByte {
+			copy(d.Bytes(), d.Bytes()[j:])
 			break
 		}
 	}
 
-	return data, nil
+	return d.Bytes(), nil
 }
 
 func (hlsDl *HlsDl) getKey(segment *Segment) (key []byte, iv []byte, err error) {
