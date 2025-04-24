@@ -3,7 +3,6 @@ package hlsdl
 import (
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -165,38 +164,6 @@ func (hlsDl *HlsDl) downloadSegments(segmentsDir string, segments []*Segment) er
 
 }
 
-func (hlsDl *HlsDl) join(segmentsDir string, segments []*Segment) (string, error) {
-	log.Println("Joining segments")
-
-	outFile := filepath.Join(hlsDl.dir, hlsDl.filename)
-
-	f, err := os.Create(outFile)
-	if err != nil {
-		return "", err
-	}
-	defer f.Close()
-
-	sort.Slice(segments, func(i, j int) bool {
-		return segments[i].SeqId < segments[j].SeqId
-	})
-
-	defer os.RemoveAll(segmentsDir)
-	for _, segment := range segments {
-		d, err := hlsDl.decrypt(segment)
-		if err != nil {
-			return "", err
-		}
-		if _, err := f.Write(d); err != nil {
-			return "", err
-		}
-		if err := os.RemoveAll(segment.Path); err != nil {
-			return "", err
-		}
-	}
-
-	return outFile, nil
-}
-
 func (hlsDl *HlsDl) Download() (string, error) {
 	segs, err := parseHlsSegments(hlsDl.hlsURL, hlsDl.headers)
 	if err != nil {
@@ -217,46 +184,15 @@ func (hlsDl *HlsDl) Download() (string, error) {
 	return fp, nil
 }
 
-// Decrypt descryps a segment
-func (hlsDl *HlsDl) decrypt(segment *Segment) ([]byte, error) {
-	file, err := os.Open(segment.Path)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-	data, err := io.ReadAll(file)
-	if err != nil {
-		return nil, err
-	}
-	if segment.Key != nil {
-		key, iv, err := hlsDl.getKey(segment)
-		if err != nil {
-			return nil, err
-		}
-		data, err = decryptAES128(data, key, iv)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	for j := 0; j < len(data); j++ {
-		if data[j] == syncByte {
-			data = data[j:]
-			break
-		}
-	}
-
-	return data, nil
-}
-
 func (hlsDl *HlsDl) getKey(segment *Segment) (key []byte, iv []byte, err error) {
 	res, err := hlsDl.client.SetHeaders(hlsDl.headers).R().Get(segment.Key.URI)
 	if err != nil {
 		return nil, nil, err
 	}
 	if res.StatusCode() != 200 {
-		return nil, nil, errors.New("Failed to get descryption key")
+		return nil, nil, errors.New("failed to get descryption key")
 	}
+
 	key = res.Body()
 	iv = []byte(segment.Key.IV)
 	if len(iv) == 0 {
@@ -264,6 +200,7 @@ func (hlsDl *HlsDl) getKey(segment *Segment) (key []byte, iv []byte, err error) 
 	}
 	return
 }
+
 func (hlsDl *HlsDl) GetProgress() float64 {
 	var current int64
 	if hlsDl.enableBar {
@@ -272,4 +209,54 @@ func (hlsDl *HlsDl) GetProgress() float64 {
 		current = atomic.LoadInt64(&hlsDl.segCurrent)
 	}
 	return float64(current) / float64(hlsDl.segTotal)
+}
+
+func (hlsDl *HlsDl) join(segmentsDir string, segments []*Segment) (string, error) {
+	log.Println("Joining segments")
+
+	outFile := filepath.Join(hlsDl.dir, hlsDl.filename)
+
+	// Create the output file
+	f, err := os.Create(outFile)
+	if err != nil {
+		return "", fmt.Errorf("failed to create output file: %w", err)
+	}
+	defer f.Close()
+
+	// Sort the segments by SeqId to ensure correct order
+	sort.Slice(segments, func(i, j int) bool {
+		return segments[i].SeqId < segments[j].SeqId
+	})
+
+	// Clean up the segmentsDir after processing
+	defer func() {
+		if err := os.RemoveAll(segmentsDir); err != nil {
+			log.Printf("failed to remove segments directory: %v", err)
+		}
+	}()
+
+	// Process each segment one by one
+	for _, segment := range segments {
+		if segment.Key != nil {
+			key, iv, err := hlsDl.getKey(segment)
+			if err != nil {
+				return "", err
+			}
+			// Decrypt the segment and write it directly to the output file
+			if err := decryptAES128Stream(segment.Path, f, key, iv); err != nil {
+				return "", err
+			}
+		} else {
+			if err := decodeStream(segment.Path, f); err != nil {
+				return "", err
+			}
+		}
+
+		// Remove the segment file after processing
+		if err := os.Remove(segment.Path); err != nil {
+			log.Printf("failed to remove segment file (%s): %v", segment.Path, err)
+		}
+	}
+
+	return outFile, nil
 }
