@@ -1,6 +1,8 @@
 package hlsdl
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"log"
@@ -76,15 +78,20 @@ func wait(wg *sync.WaitGroup) chan bool {
 }
 
 func (hlsDl *HlsDl) downloadSegment(segment *Segment) error {
+	if _, err := os.Stat(segment.Path); err == nil {
+		return nil
+	}
+	tmpfile := segment.Path + ".tmp"
 	hlsDl.client.SetRetryCount(5).SetRetryWaitTime(time.Second)
-	resp, err := hlsDl.client.R().SetHeaders(hlsDl.headers).SetOutput(segment.Path).Get(segment.URI)
+	resp, err := hlsDl.client.R().SetHeaders(hlsDl.headers).SetOutput(tmpfile).Get(segment.URI)
 	if err != nil {
 		return err
 	}
 	if resp.StatusCode() != http.StatusOK {
 		return errors.New(resp.Status())
 	}
-	return nil
+	err = os.Rename(tmpfile, segment.Path)
+	return err
 }
 
 func (hlsDl *HlsDl) downloadSegments(segmentsDir string, segments []*Segment) error {
@@ -169,10 +176,13 @@ func (hlsDl *HlsDl) Download() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	segmentsDir := filepath.Join(hlsDl.dir, fmt.Sprintf("%d", hlsDl.startTime))
+
+	tmpdir := md5.Sum([]byte(hlsDl.hlsURL))
+	segmentsDir := filepath.Join(hlsDl.dir, hex.EncodeToString(tmpdir[:]))
 	if err := os.MkdirAll(segmentsDir, os.ModePerm); err != nil {
 		return "", err
 	}
+	log.Println("Tmpdir", segmentsDir)
 	if err := hlsDl.downloadSegments(segmentsDir, segs); err != nil {
 		return "", err
 	}
